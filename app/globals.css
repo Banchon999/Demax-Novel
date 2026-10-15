@@ -1,26 +1,49 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-bg: #0b0b12;
+  --color-surface: #15151f;
+  --color-surface-2: #1d1d2a;
+  --color-fg: #ececf3;
+  --color-muted: #9a9ab0;
+  --color-accent: #8b5cf6;
+  --color-accent-soft: #c4b5fd;
+  --font-sans: var(--font-noto-thai), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Fine diagonal texture for generated covers. */
+.cover-pattern {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.07) 0 1px,
+    transparent 1px 10px
+  );
+}
+
+/* Horizontal carousels: scroll-snap, no visible scrollbar. */
+.scroller {
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
