@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
-import { HomeIcon, LibraryIcon, SearchIcon, UserIcon } from "./icons";
+import { BookIcon, LightbulbIcon, SettingsIcon } from "./icons";
 
 type NavItem = {
   href: string;
@@ -12,26 +12,30 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "หน้าแรก", icon: HomeIcon },
-  { href: "/search", label: "ค้นหา", icon: SearchIcon },
-  { href: "/library", label: "ชั้นหนังสือ", icon: LibraryIcon },
-  { href: "/profile", label: "โปรไฟล์", icon: UserIcon },
+  { href: "/", label: "เรื่องของฉัน", icon: BookIcon },
+  { href: "/ideas", label: "ไอเดีย", icon: LightbulbIcon },
+  { href: "/settings", label: "ตั้งค่า", icon: SettingsIcon },
 ];
 
+/** Pages that live inside a project count as "เรื่องของฉัน". */
+const PROJECT_ROUTES = ["/project", "/codex", "/entity", "/timeline", "/graph", "/plot", "/ai"];
+
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/novel/");
+  if (href === "/") return pathname === "/" || PROJECT_ROUTES.some((r) => pathname.startsWith(r));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function BottomNav() {
   const pathname = usePathname();
+  // The writing screen is full-bleed; it has its own back button.
+  if (pathname.startsWith("/write")) return null;
 
   return (
     <nav
       aria-label="เมนูหลัก"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-bg/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg"
     >
-      <ul className="mx-auto grid max-w-2xl grid-cols-4">
+      <ul className="mx-auto grid max-w-2xl grid-cols-3">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
