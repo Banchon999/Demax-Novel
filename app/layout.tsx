@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
+import { PwaSetup } from "@/components/pwa";
 import "./globals.css";
 
 const notoSansThai = Noto_Sans_Thai({
@@ -11,11 +12,12 @@ const notoSansThai = Noto_Sans_Thai({
 
 export const metadata: Metadata = {
   title: {
-    default: "DEMAX NOVEL — อ่านนิยายออนไลน์",
-    template: "%s | DEMAX NOVEL",
+    default: "DEMAX Studio — ห้องแต่งนิยาย",
+    template: "%s | DEMAX Studio",
   },
-  description:
-    "DEMAX NOVEL แพลตฟอร์มอ่านนิยายออนไลน์ รวมนิยายยอดฮิตและมาแรง แฟนตาซี โรแมนติก กำลังภายใน และอีกมากมาย",
+  description: "เครื่องมือแต่งนิยายส่วนตัว ใช้บนมือถือได้แม้ไม่มีเน็ต",
+  applicationName: "DEMAX Studio",
+  appleWebApp: { capable: true, title: "DEMAX", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -24,6 +26,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -36,10 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           ข้ามไปยังเนื้อหาหลัก
         </a>
-        <div className="pb-[calc(4rem+env(safe-area-inset-bottom))]">
-          {children}
-        </div>
+        <div className="pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</div>
         <BottomNav />
+        <PwaSetup />
       </body>
     </html>
   );
