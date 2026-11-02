@@ -17,7 +17,7 @@ import { Button, Field, IconButton, Loading, ProgressBar, Segmented, Sheet, form
 import { dayKey } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { createSnapshot, maybeAutoSnapshot, projectChapters, restoreSnapshot, updateChapterMeta } from "@/lib/db/repo";
-import type { Chapter, ChapterContent, Project } from "@/lib/db/schema";
+import type { Beat, Chapter, ChapterContent, PlotThread, Project } from "@/lib/db/schema";
 import { SAVE_LABELS, useAutosave } from "@/lib/hooks/use-autosave";
 import { FONT_SIZES, useSetting, type FontSizeKey } from "@/lib/hooks/use-setting";
 import { useVisualViewport } from "@/lib/hooks/use-visual-viewport";
@@ -77,6 +77,18 @@ function WriteSession({ chapter, project }: { chapter: Chapter; project: Project
     [codex],
   );
   const mentioned = mention ? codex.entityById.get(mention) : undefined;
+  const plan = useLiveQuery(async () => {
+    const [beats, threads] = await Promise.all([
+      db.beats.where("chapterId").equals(chapter.id).toArray(),
+      db.threads.where("projectId").equals(project.id).toArray(),
+    ]);
+    return {
+      beats,
+      planted: threads.filter((t) => t.plantChapterId === chapter.id),
+      payoffs: threads.filter((t) => t.payoffChapterId === chapter.id),
+      open: threads.filter((t) => t.status === "open"),
+    };
+  }, [chapter.id, project.id]);
   const todayWords = useLiveQuery(
     () => db.writingDays.get(`${project.id}:${dayKey(new Date())}`).then((d) => d?.words ?? 0),
     [project.id],
@@ -188,6 +200,8 @@ function WriteSession({ chapter, project }: { chapter: Chapter; project: Project
       <Sheet open={sheet === "menu"} onClose={() => setSheet(null)} title="ตัวเลือกของตอน">
         {sheet === "menu" && (
           <ChapterOptions
+            plan={plan}
+            projectId={project.id}
             chapter={chapter}
             fontKey={fontKey}
             onFontKey={setFontKey}
@@ -221,7 +235,11 @@ const FONT_OPTIONS: { value: FontSizeKey; label: string }[] = [
   { value: "xl", label: "ใหญ่มาก" },
 ];
 
+type ChapterPlan = { beats: Beat[]; planted: PlotThread[]; payoffs: PlotThread[]; open: PlotThread[] };
+
 function ChapterOptions({
+  plan,
+  projectId,
   chapter,
   fontKey,
   onFontKey,
@@ -230,6 +248,8 @@ function ChapterOptions({
   onHistory,
   onDone,
 }: {
+  plan?: ChapterPlan;
+  projectId: string;
   chapter: Chapter;
   fontKey: FontSizeKey;
   onFontKey: (k: FontSizeKey) => void;
@@ -239,8 +259,33 @@ function ChapterOptions({
   onDone: () => void;
 }) {
   const [title, setTitle] = useState(chapter.title);
+  const hasPlan = plan && (plan.beats.length || plan.planted.length || plan.payoffs.length);
   return (
     <div className="space-y-5">
+      <section className="space-y-2 rounded-xl bg-surface-2 p-3 ring-1 ring-white/5" aria-label="แผนของตอนนี้">
+        <p className="text-sm font-bold">แผนของตอนนี้</p>
+        {hasPlan ? (
+          <ul className="space-y-1 text-sm">
+            {plan.beats.map((b) => (
+              <li key={b.id}>
+                {b.done ? "✓" : "○"} {b.title} <span className="text-xs text-muted">(ตึงเครียด {b.tension}/10)</span>
+              </li>
+            ))}
+            {plan.planted.map((t) => (
+              <li key={t.id}>🧵 ปูปม: {t.title}</li>
+            ))}
+            {plan.payoffs.map((t) => (
+              <li key={t.id}>🎯 เฉลยปม: {t.title}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted">ยังไม่ได้วางจังหวะหรือปมไว้ในตอนนี้</p>
+        )}
+        {plan && plan.open.length > 0 && <p className="text-xs text-amber-200">ปมที่ยังไม่เฉลยทั้งเรื่อง: {plan.open.length}</p>}
+        <Link href={`/plot?p=${projectId}`} className="inline-block text-xs font-semibold text-accent-soft underline">
+          เปิดแท็บพล็อต
+        </Link>
+      </section>
       <form
         className="space-y-2"
         onSubmit={async (e) => {

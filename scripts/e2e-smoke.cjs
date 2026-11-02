@@ -212,6 +212,43 @@ async function waitSaved(page) {
   await shot(page, "timeline");
   void towerUrl;
 
+  // 4c. Plot board: arc from template, place beats, thread, insights, chart.
+  await page.goto(projectUrl.replace("/project?id=", "/plot?p="));
+  await page.getByRole("button", { name: "ภาคใหม่" }).click();
+  await page.getByLabel("ชื่อภาค").fill("ภาคหอคอยต้องห้าม");
+  await page.getByLabel("เริ่มจากโครงสำเร็จรูป (ไม่บังคับ)").selectOption("webnovel");
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByText("0/8 จังหวะเสร็จ").waitFor();
+  check(true, "arc created from the web-novel template (8 beats)");
+  await page.getByRole("button", { name: /^ตะขอเปิดภาค/ }).click();
+  await page.getByLabel("วางไว้ในตอน").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByRole("button", { name: /ตะขอเปิดภาค.*ตอนที่ 1/ }).waitFor();
+  await page.getByRole("checkbox", { name: "ตะขอเปิดภาค เสร็จแล้ว" }).click();
+  await page.getByText("1/8 จังหวะเสร็จ").waitFor();
+  await page.getByRole("button", { name: /^ชัยชนะเล็ก/ }).click();
+  await page.getByLabel("วางไว้ในตอน").selectOption({ index: 2 });
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await shot(page, "plot-arcs");
+  await page.getByRole("radio", { name: /ปมที่ปูไว้/ }).click();
+  await page.getByRole("button", { name: "ปมใหม่" }).click();
+  await page.getByLabel("ปม / สิ่งที่ปูไว้").fill("ดาบหักในห้องใต้ดิน");
+  await page.getByLabel("ปูไว้ในตอน").selectOption({ index: 2 });
+  await page.getByLabel("เฉลยในตอน").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByText("ดาบหักในห้องใต้ดิน").waitFor();
+  await page.getByRole("radio", { name: /ภาพรวม/ }).click();
+  await page.getByText(/เฉลยตอนที่ 1 ก่อนปูตอนที่ 2/).waitFor();
+  check(true, "insights catch a payoff placed before its setup");
+  check((await page.locator("svg[aria-label='กราฟความตึงเครียดตามตอน'] circle").count()) === 2, "tension chart plots the placed beats");
+  await page.locator("svg[aria-label='กราฟความตึงเครียดตามตอน']").hover();
+  await shot(page, "plot-rhythm");
+  await page.goto(proseUrl);
+  await page.getByRole("button", { name: "ตัวเลือก" }).click();
+  await page.getByRole("region", { name: "แผนของตอนนี้" }).getByText("ตะขอเปิดภาค").waitFor();
+  check(true, "writing screen shows this chapter's plan");
+  await page.getByRole("button", { name: "ปิด" }).click();
+
   // 5. Backup download, restore into a fresh "device".
   await page.goto(BASE + "/settings");
   const [download] = await Promise.all([
