@@ -1,13 +1,18 @@
 import Dexie, { type EntityTable } from "dexie";
 import type {
+  AiThread,
+  Arc,
+  Beat,
   Chapter,
   Entity,
   EntityLink,
   EntityType,
   Idea,
+  PlotThread,
   Project,
   Setting,
   Snapshot,
+  TimelineEvent,
   WritingDay,
 } from "./schema";
 
@@ -21,6 +26,11 @@ export class DemaxDB extends Dexie {
   entityTypes!: EntityTable<EntityType, "id">;
   entities!: EntityTable<Entity, "id">;
   links!: EntityTable<EntityLink, "id">;
+  events!: EntityTable<TimelineEvent, "id">;
+  arcs!: EntityTable<Arc, "id">;
+  beats!: EntityTable<Beat, "id">;
+  threads!: EntityTable<PlotThread, "id">;
+  aiThreads!: EntityTable<AiThread, "id">;
 
   constructor() {
     super("demax-studio");
@@ -36,6 +46,22 @@ export class DemaxDB extends Dexie {
       entities: "id, projectId, typeId, *tags",
       links: "id, projectId, fromId, toId",
     });
+    this.version(2)
+      .stores({
+        events: "id, projectId, sortKey",
+        arcs: "id, projectId, order",
+        beats: "id, projectId, arcId, chapterId",
+        threads: "id, projectId, status",
+        aiThreads: "id, projectId, updatedAt",
+      })
+      .upgrade((tx) =>
+        tx
+          .table("entities")
+          .toCollection()
+          .modify((e: { progressions?: unknown[] }) => {
+            e.progressions ??= [];
+          }),
+      );
   }
 }
 

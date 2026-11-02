@@ -3,7 +3,9 @@
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import type { Term } from "@/lib/codex/mentions";
+import { CodexMentions, REFRESH_META } from "./codex-mentions";
 import {
   BoldIcon,
   HeadingIcon,
@@ -22,12 +24,27 @@ export function ProseEditor({
   onChange,
   fontSize,
   showToolbar,
+  terms,
+  colorOf,
+  onMention,
+  overlay,
 }: {
   initial: ProseContent;
   onChange: (content: ChapterContent) => void;
   fontSize: number;
   showToolbar: boolean;
+  terms: Term[];
+  colorOf: (entityId: string) => string;
+  onMention: (entityId: string) => void;
+  /** Rendered between the page and the toolbar (e.g. the mention card). */
+  overlay?: ReactNode;
 }) {
+  // The plugin is created once; it reads the latest codex via the bridge.
+  const [bridge] = useState(() => new MentionBridge(terms, colorOf, onMention));
+  useEffect(() => {
+    bridge.update(terms, colorOf, onMention);
+  }, [bridge, terms, colorOf, onMention]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -37,6 +54,11 @@ export function ProseEditor({
         link: false,
       }),
       Placeholder.configure({ placeholder: "เริ่มเขียนเรื่องของคุณที่นี่…" }),
+      CodexMentions.configure({
+        getTerms: () => bridge.terms,
+        getColor: (id) => bridge.colorOf(id),
+        onMentionClick: (id) => bridge.onMention(id),
+      }),
     ],
     content: initial.doc,
     immediatelyRender: false,
@@ -50,6 +72,10 @@ export function ProseEditor({
     onUpdate: ({ editor }) => onChange({ kind: "prose", doc: editor.getJSON() }),
   });
 
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta(REFRESH_META, true));
+  }, [terms, editor]);
+
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto" style={{ fontSize }}>
@@ -57,9 +83,24 @@ export function ProseEditor({
           <EditorContent editor={editor} />
         </div>
       </div>
+      {overlay}
       {showToolbar && editor && <Toolbar editor={editor} />}
     </>
   );
+}
+
+/** Mutable holder the long-lived ProseMirror plugin reads from. */
+class MentionBridge {
+  constructor(
+    public terms: Term[],
+    public colorOf: (id: string) => string,
+    public onMention: (id: string) => void,
+  ) {}
+  update(terms: Term[], colorOf: (id: string) => string, onMention: (id: string) => void) {
+    this.terms = terms;
+    this.colorOf = colorOf;
+    this.onMention = onMention;
+  }
 }
 
 function Toolbar({ editor }: { editor: Editor }) {

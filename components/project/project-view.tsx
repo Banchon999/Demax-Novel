@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { NovelCover } from "@/components/novel-cover";
 import { FORMAT_OPTIONS, ProjectForm } from "@/components/project/project-form";
+import { ProjectNav } from "@/components/project/project-nav";
 import { BackLink, PageTitle, TopBar } from "@/components/top-bar";
 import {
   Button,
@@ -94,6 +95,7 @@ export function ProjectView() {
           <PencilIcon className="size-5" />
         </IconButton>
       </TopBar>
+      <ProjectNav projectId={project.id} active="chapters" />
 
       <main id="main" className="mx-auto max-w-2xl space-y-5 px-4 pb-24 pt-4">
         <section className="flex gap-4">

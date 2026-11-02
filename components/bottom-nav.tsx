@@ -17,8 +17,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "ตั้งค่า", icon: SettingsIcon },
 ];
 
+/** Pages that live inside a project count as "เรื่องของฉัน". */
+const PROJECT_ROUTES = ["/project", "/codex", "/entity", "/timeline", "/graph", "/plot", "/ai"];
+
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/project");
+  if (href === "/") return pathname === "/" || PROJECT_ROUTES.some((r) => pathname.startsWith(r));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

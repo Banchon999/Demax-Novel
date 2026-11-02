@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, SendIcon } from "@/components/icons";
 import { Button, ConfirmButton, Field, IconButton, Segmented, Sheet, inputClass } from "@/components/ui";
+import { findMentions, type Term } from "@/lib/codex/mentions";
 import { newId } from "@/lib/db/repo";
 import type { ChapterContent, ChatCast, ChatContent, ChatMessage, ChatMessageKind } from "@/lib/db/schema";
 
@@ -19,14 +20,23 @@ const speakerOf = (m: ChatMessage): Speaker =>
 const sameSpeaker = (a: Speaker, b: Speaker) =>
   a.kind === b.kind && (a.kind !== "msg" || (b.kind === "msg" && a.castId === b.castId));
 
+export type CodexPick = { id: string; name: string; icon: string };
+
 export function ChatEditor({
   initial,
   onChange,
   fontSize,
+  terms,
+  colorOf,
+  characters,
 }: {
   initial: ChatChapter;
   onChange: (content: ChapterContent) => void;
   fontSize: number;
+  terms: Term[];
+  colorOf: (entityId: string) => string;
+  /** Codex entries offered as quick picks when adding a cast member. */
+  characters: CodexPick[];
 }) {
   const [chat, setChat] = useState<ChatContent>(initial.chat);
   const [speaker, setSpeaker] = useState<Speaker>(() =>
@@ -115,6 +125,8 @@ export function ChatEditor({
           return (
             <li key={m.id}>
               <MessageView
+                terms={terms}
+                colorOf={colorOf}
                 message={m}
                 cast={m.castId ? castById.get(m.castId) : undefined}
                 showName={showName}
@@ -206,6 +218,7 @@ export function ChatEditor({
             cast={castSheet === "new" ? null : castSheet}
             defaultSide={chat.cast.length === 0 ? "right" : "left"}
             defaultColor={CAST_COLORS[chat.cast.length % CAST_COLORS.length]}
+            characters={characters.filter((c) => !chat.cast.some((x) => x.entityId === c.id))}
             onSave={(c) => {
               saveCast(c);
               setCastSheet(null);
@@ -248,13 +261,34 @@ export function ChatEditor({
   );
 }
 
+/** Text with codex names underlined, as in the prose editor. */
+function MentionText({ text, terms, colorOf }: { text: string; terms: Term[]; colorOf: (id: string) => string }) {
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const m of findMentions(text, terms)) {
+    if (m.from > at) parts.push(text.slice(at, m.from));
+    parts.push(
+      <span key={m.from} className="codex-mention" style={{ ["--mention" as string]: colorOf(m.entityId) }}>
+        {text.slice(m.from, m.to)}
+      </span>,
+    );
+    at = m.to;
+  }
+  parts.push(text.slice(at));
+  return <>{parts}</>;
+}
+
 function MessageView({
   message,
   cast,
   showName,
   highlighted,
   onOpen,
+  terms,
+  colorOf,
 }: {
+  terms: Term[];
+  colorOf: (id: string) => string;
   message: ChatMessage;
   cast?: ChatCast;
   showName: boolean;
@@ -272,7 +306,7 @@ function MessageView({
               : "whitespace-pre-wrap italic text-muted"
           }
         >
-          {message.text}
+          <MentionText text={message.text} terms={terms} colorOf={colorOf} />
         </span>
       </button>
     );
@@ -293,7 +327,7 @@ function MessageView({
         } ${ring}`}
         style={{ backgroundColor: `${cast.color}2e`, boxShadow: `inset 0 0 0 1px ${cast.color}55` }}
       >
-        {message.text}
+        <MentionText text={message.text} terms={terms} colorOf={colorOf} />
       </button>
     </div>
   );
@@ -330,9 +364,11 @@ function CastForm({
   cast,
   defaultSide,
   defaultColor,
+  characters,
   onSave,
   onRemove,
 }: {
+  characters: CodexPick[];
   cast: ChatCast | null;
   defaultSide: ChatCast["side"];
   defaultColor: string;
@@ -342,17 +378,48 @@ function CastForm({
   const [name, setName] = useState(cast?.name ?? "");
   const [color, setColor] = useState(cast?.color ?? defaultColor);
   const [side, setSide] = useState<ChatCast["side"]>(cast?.side ?? defaultSide);
+  const [entityId, setEntityId] = useState(cast?.entityId);
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim()) return;
-        onSave({ id: cast?.id ?? newId(), name: name.trim(), color, side });
+        onSave({ id: cast?.id ?? newId(), name: name.trim(), color, side, ...(entityId ? { entityId } : {}) });
       }}
     >
+      {!cast && characters.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium text-fg/90">เลือกจาก Codex</span>
+          <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+            {characters.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={entityId === c.id}
+                onClick={() => {
+                  setName(c.name);
+                  setEntityId(c.id);
+                }}
+                className={`rounded-full px-3 py-1 text-sm ring-1 ${entityId === c.id ? "bg-accent text-white ring-accent" : "bg-surface-2 ring-white/10"}`}
+              >
+                {c.icon} {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <Field label="ชื่อตัวละคร">
-        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+        <input
+          className={inputClass}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setEntityId(undefined);
+          }}
+          required
+          autoFocus
+        />
       </Field>
       <div className="space-y-1.5">
         <span className="text-sm font-medium text-fg/90">สี</span>

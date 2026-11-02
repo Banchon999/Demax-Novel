@@ -103,3 +103,17 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Codex names detected in the manuscript. */
+.codex-mention {
+  text-decoration: underline dotted var(--mention, var(--color-accent-soft));
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+  cursor: pointer;
+}
+
+/* Graph is read-only: connection handles are just noise. */
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}

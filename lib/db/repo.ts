@@ -27,7 +27,9 @@ const COVERS: [string, string][] = [
   ["#14b8a6", "#042f2e"],
 ];
 
-export const newId = () => crypto.randomUUID();
+export { newId } from "./id";
+import { newId } from "./id";
+import { ensureCodexSeeded } from "./codex";
 
 export function emptyContent(format: ChapterFormat): ChapterContent {
   return format === "prose"
@@ -55,7 +57,8 @@ export async function createProject(input: {
     updatedAt: now,
   };
   await db.projects.add(project);
-  return project;
+  await ensureCodexSeeded(project.id);
+  return { ...project, codexSeeded: true };
 }
 
 export async function updateProject(
@@ -68,9 +71,28 @@ export async function updateProject(
 export async function deleteProject(id: string) {
   await db.transaction(
     "rw",
-    [db.projects, db.chapters, db.snapshots, db.ideas, db.writingDays, db.entityTypes, db.entities, db.links],
+    [
+      db.projects,
+      db.chapters,
+      db.snapshots,
+      db.ideas,
+      db.writingDays,
+      db.entityTypes,
+      db.entities,
+      db.links,
+      db.events,
+      db.arcs,
+      db.beats,
+      db.threads,
+      db.aiThreads,
+    ],
     async () => {
       await Promise.all([
+        db.events.where("projectId").equals(id).delete(),
+        db.arcs.where("projectId").equals(id).delete(),
+        db.beats.where("projectId").equals(id).delete(),
+        db.threads.where("projectId").equals(id).delete(),
+        db.aiThreads.where("projectId").equals(id).delete(),
         db.chapters.where("projectId").equals(id).delete(),
         db.snapshots.where("projectId").equals(id).delete(),
         db.ideas.where("projectId").equals(id).delete(),
@@ -142,16 +164,35 @@ export async function moveChapter(id: string, direction: -1 | 1) {
 }
 
 export async function deleteChapter(id: string) {
-  await db.transaction("rw", db.chapters, db.snapshots, async () => {
+  await db.transaction(
+    "rw",
+    [db.chapters, db.snapshots, db.beats, db.events, db.threads, db.entities, db.aiThreads],
+    async () => {
     const chapter = await db.chapters.get(id);
     if (!chapter) return;
     await db.snapshots.where("chapterId").equals(id).delete();
     await db.chapters.delete(id);
+    // Anything pointing at the chapter keeps existing, just unlinked.
+    await db.beats.where("chapterId").equals(id).modify({ chapterId: null });
+    await db.events.where("projectId").equals(chapter.projectId).modify((e) => {
+      if (e.chapterId === id) e.chapterId = null;
+    });
+    await db.threads.where("projectId").equals(chapter.projectId).modify((t) => {
+      if (t.plantChapterId === id) t.plantChapterId = null;
+      if (t.payoffChapterId === id) t.payoffChapterId = null;
+    });
+    await db.aiThreads.where("projectId").equals(chapter.projectId).modify((t) => {
+      if (t.chapterId === id) t.chapterId = null;
+    });
+    await db.entities.where("projectId").equals(chapter.projectId).modify((e) => {
+      e.progressions = e.progressions.filter((p) => p.chapterId !== id);
+    });
     const rest = await projectChapters(chapter.projectId);
     await Promise.all(
       rest.map((c, i) => (c.order === i + 1 ? null : db.chapters.update(c.id, { order: i + 1 }))),
     );
-  });
+    },
+  );
 }
 
 /**

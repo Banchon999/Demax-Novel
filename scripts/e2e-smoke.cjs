@@ -125,7 +125,7 @@ async function waitSaved(page) {
 
   // 4. Project page, home, ideas, settings screenshots.
   await page.goto(projectUrl);
-  await page.getByText("สารบัญ").waitFor();
+  await page.getByRole("heading", { name: "สารบัญ" }).waitFor();
   check((await page.locator("ol > li").count()) === 2, "project lists both chapters");
   await shot(page, "project");
   await page.goto(BASE + "/ideas");
@@ -139,6 +139,78 @@ async function waitSaved(page) {
   await page.getByText("เขียนต่อจากล่าสุด").waitFor();
   check(await page.getByText("ราชันย์แห่งเงา").first().isVisible(), "home shows project and continue card");
   await shot(page, "home");
+
+
+  // 4b. Codex: types, entity fields, alias, progression, link, mentions, graph, timeline.
+  await page.goto(projectUrl);
+  await page.getByRole("link", { name: "Codex" }).click();
+  await page.waitForURL(/\/codex\?p=/);
+  await page.getByRole("tab", { name: /ตัวละคร/ }).waitFor();
+  check(await page.getByRole("tab", { name: /สถานที่/ }).isVisible(), "codex has default types");
+  async function addEntity(type, name) {
+    await page.getByRole("button", { name: "เพิ่มข้อมูล" }).click();
+    await page.getByRole("radio", { name: new RegExp(type) }).click();
+    await page.getByLabel("ชื่อ", { exact: true }).fill(name);
+    await page.getByRole("button", { name: "สร้างแล้วเปิดรายละเอียด" }).click();
+    await page.waitForURL(/\/entity\?id=/);
+  }
+  await addEntity("สถานที่", "หอคอยเงา");
+  const towerUrl = page.url();
+  await page.goBack();
+  await addEntity("ตัวละคร", "ไลลา");
+  const lailaUrl = page.url();
+  await page.getByLabel("ชื่อเรียกอื่น / ฉายา (ใช้ไฮไลต์ในเนื้อเรื่องด้วย)").fill("ราชินีเงา");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("บทบาท").selectOption("ตัวเอก");
+  await page.getByLabel("นิสัย").fill("ใจเย็น แต่เจ้าคิดเจ้าแค้น");
+  await page.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }).click();
+  await page.getByLabel("ข้อมูลที่เปลี่ยน").selectOption({ label: "บทบาท" });
+  await page.getByLabel("ค่าใหม่").fill("ตัวร้าย");
+  await page.getByLabel("หมายเหตุ (ไม่บังคับ)").fill("ถูกเงากลืน");
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByText("(ตั้งแต่ตอน 2)").waitFor();
+  check(true, "progression shows in state as of latest chapter");
+  await page.getByRole("button", { name: "เพิ่ม", exact: true }).click();
+  await page.getByRole("radio", { name: /หอคอยเงา/ }).click();
+  await page.getByRole("button", { name: "อาศัยอยู่ที่" }).click();
+  await page.getByRole("button", { name: "เชื่อมความสัมพันธ์" }).click();
+  await page.getByText("อาศัยอยู่ที่").first().waitFor();
+  await page.waitForTimeout(700); // debounced field save
+  await page.reload();
+  check((await page.getByLabel("นิสัย").inputValue()) === "ใจเย็น แต่เจ้าคิดเจ้าแค้น", "entity fields persist");
+  check(await page.getByText("ราชินีเงา").isVisible(), "alias persists");
+  await shot(page, "entity");
+
+  await page.goto(proseUrl);
+  await focusEditor(page);
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("ราชินีเงามองไปที่หอคอยเงา");
+  await waitSaved(page);
+  check((await page.locator(".codex-mention").count()) === 2, "alias and place are highlighted in the manuscript");
+  await page.locator(".codex-mention").first().click();
+  const card = page.getByRole("complementary", { name: "ข้อมูลของ ไลลา" });
+  await card.waitFor();
+  check((await card.textContent()).includes("ตัวเอก"), "mention card shows state as of this chapter (before the change)");
+  await shot(page, "mention-card");
+
+  await page.goto(lailaUrl);
+  await page.getByText(/ปรากฏ 2 จาก 2 ตอน/).waitFor();
+  check(true, "appearances counted across prose and chat chapters");
+  await page.goto(projectUrl.replace("/project?id=", "/graph?p="));
+  await page.locator(".react-flow__node").nth(1).waitFor();
+  check((await page.locator(".react-flow__node").count()) === 2, "relationship graph renders linked entities");
+  await shot(page, "graph");
+  await page.goto(projectUrl.replace("/project?id=", "/timeline?p="));
+  await page.getByRole("button", { name: "เหตุการณ์" }).click();
+  await page.getByLabel("ชื่อเหตุการณ์").fill("สงครามแยกแผ่นดิน");
+  await page.getByLabel("เวลาในโลกของเรื่อง").fill("ปีที่ 1024");
+  await page.getByRole("button", { name: /ไลลา/ }).click();
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByText("สงครามแยกแผ่นดิน").waitFor();
+  check(true, "timeline event saved");
+  await shot(page, "timeline");
+  void towerUrl;
 
   // 5. Backup download, restore into a fresh "device".
   await page.goto(BASE + "/settings");
@@ -156,6 +228,8 @@ async function waitSaved(page) {
   await page2.getByText(/กู้คืนสำเร็จ: 1 เรื่อง 2 ตอน 1 ไอเดีย/).waitFor();
   await page2.goto(chatUrl);
   await page2.getByText("เธอเห็นเงานั่นไหม").waitFor();
+  await page2.goto(lailaUrl);
+  await page2.getByText("ราชินีเงา").waitFor();
   check(true, "backup restores on a fresh device");
   await ctx2.close();
 

@@ -15,6 +15,8 @@
     "@tiptap/pm": "^3.32.2",
     "@tiptap/react": "^3.32.2",
     "@tiptap/starter-kit": "^3.32.2",
+    "@xyflow/react": "^12.12.1",
+    "d3-force": "^3.0.0",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "next": "16.4.1",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",

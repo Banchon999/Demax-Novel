@@ -3,8 +3,8 @@
  * hashed build assets are cache-first. All user data is in IndexedDB, so
  * nothing here ever caches user content. */
 
-const CACHE = "demax-shell-v1";
-const PAGES = ["/", "/project", "/write", "/ideas", "/settings"];
+const CACHE = "demax-shell-v2";
+const PAGES = ["/", "/project", "/write", "/ideas", "/settings", "/codex", "/entity", "/timeline", "/graph", "/plot", "/ai"];
 const EXTRA = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/icon.svg"];
 
 async function precache() {

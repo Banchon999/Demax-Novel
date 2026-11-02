@@ -3,7 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -21,6 +21,8 @@ import type { Chapter, ChapterContent, Project } from "@/lib/db/schema";
 import { SAVE_LABELS, useAutosave } from "@/lib/hooks/use-autosave";
 import { FONT_SIZES, useSetting, type FontSizeKey } from "@/lib/hooks/use-setting";
 import { useVisualViewport } from "@/lib/hooks/use-visual-viewport";
+import { useCodex } from "@/lib/hooks/use-codex";
+import { MentionCard } from "./mention-card";
 import { ChatEditor } from "./chat-editor";
 import { ProseEditor } from "./prose-editor";
 import { SnapshotsPanel } from "./snapshots-sheet";
@@ -60,6 +62,21 @@ function WriteSession({ chapter, project }: { chapter: Chapter; project: Project
   const [version, setVersion] = useState(0);
 
   const siblings = useLiveQuery(() => projectChapters(project.id), [project.id]);
+  const codex = useCodex(project.id);
+  const [mention, setMention] = useState<string | null>(null);
+  const colorOf = useCallback(
+    (id: string) => codex.typeById.get(codex.entityById.get(id)?.typeId ?? "")?.color ?? "#a78bfa",
+    [codex],
+  );
+  const chapterOrder = useMemo(() => new Map((siblings ?? []).map((c) => [c.id, c.order])), [siblings]);
+  const characters = useMemo(
+    () =>
+      codex.entities
+        .filter((e) => codex.typeById.get(e.typeId)?.name === "ตัวละคร")
+        .map((e) => ({ id: e.id, name: e.name, icon: codex.typeById.get(e.typeId)?.icon ?? "👤" })),
+    [codex],
+  );
+  const mentioned = mention ? codex.entityById.get(mention) : undefined;
   const todayWords = useLiveQuery(
     () => db.writingDays.get(`${project.id}:${dayKey(new Date())}`).then((d) => d?.words ?? 0),
     [project.id],
@@ -119,9 +136,37 @@ function WriteSession({ chapter, project }: { chapter: Chapter; project: Project
       )}
 
       {initial.kind === "prose" ? (
-        <ProseEditor key={version} initial={initial} onChange={queue} fontSize={fontSize} showToolbar={!focus} />
+        <ProseEditor
+          key={version}
+          initial={initial}
+          onChange={queue}
+          fontSize={fontSize}
+          showToolbar={!focus}
+          terms={codex.terms}
+          colorOf={colorOf}
+          onMention={setMention}
+          overlay={
+            mentioned && (
+              <MentionCard
+                entity={mentioned}
+                type={codex.typeById.get(mentioned.typeId)}
+                chapterOrder={chapterOrder}
+                atOrder={chapter.order}
+                onClose={() => setMention(null)}
+              />
+            )
+          }
+        />
       ) : (
-        <ChatEditor key={version} initial={initial} onChange={queue} fontSize={fontSize} />
+        <ChatEditor
+          key={version}
+          initial={initial}
+          onChange={queue}
+          fontSize={fontSize}
+          terms={codex.terms}
+          colorOf={colorOf}
+          characters={characters}
+        />
       )}
 
       {!focus && (

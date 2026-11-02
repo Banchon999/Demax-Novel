@@ -1,18 +1,24 @@
 import { db } from "./index";
 import type {
+  AiThread,
+  Arc,
+  Beat,
   Chapter,
   Entity,
   EntityLink,
   EntityType,
   Idea,
+  PlotThread,
   Project,
   Setting,
   Snapshot,
+  TimelineEvent,
   WritingDay,
 } from "./schema";
 
 export const BACKUP_APP = "demax-studio";
-export const BACKUP_VERSION = 1;
+/** v2 added events, arcs, beats, threads, aiThreads (v1 files still import). */
+export const BACKUP_VERSION = 2;
 export const LAST_BACKUP_KEY = "lastBackupAt";
 
 export type BackupData = {
@@ -25,6 +31,11 @@ export type BackupData = {
   entityTypes: EntityType[];
   entities: Entity[];
   links: EntityLink[];
+  events: TimelineEvent[];
+  arcs: Arc[];
+  beats: Beat[];
+  threads: PlotThread[];
+  aiThreads: AiThread[];
 };
 
 export type Backup = {
@@ -49,6 +60,11 @@ const TABLE_KEYS: Record<TableName, "id" | "key"> = {
   entityTypes: "id",
   entities: "id",
   links: "id",
+  events: "id",
+  arcs: "id",
+  beats: "id",
+  threads: "id",
+  aiThreads: "id",
 };
 
 const TABLES = Object.keys(TABLE_KEYS) as TableName[];
@@ -85,6 +101,11 @@ export async function exportProject(projectId: string): Promise<Backup> {
       entityTypes: mine(d.entityTypes),
       entities: mine(d.entities),
       links: mine(d.links),
+      events: mine(d.events),
+      arcs: mine(d.arcs),
+      beats: mine(d.beats),
+      threads: mine(d.threads),
+      aiThreads: mine(d.aiThreads),
     },
   };
 }
