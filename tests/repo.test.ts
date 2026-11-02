@@ -113,6 +113,19 @@ describe("snapshots", () => {
   });
 });
 
+describe("appendToChapter", () => {
+  it("adds paragraphs after a snapshot, dropping the trailing empty paragraph", async () => {
+    const { appendToChapter } = await import("@/lib/db/repo");
+    const p = await createProject({ title: "x" });
+    const ch = await createChapter(p.id, { format: "prose" });
+    await appendToChapter(ch.id, "บรรทัดหนึ่ง\n\nบรรทัดสอง");
+    const saved = await db.chapters.get(ch.id);
+    const doc = saved?.content.kind === "prose" ? saved.content.doc : null;
+    expect(doc?.content?.map((n) => n.content?.[0]?.text)).toEqual(["บรรทัดหนึ่ง", "บรรทัดสอง"]);
+    expect(await db.snapshots.where("chapterId").equals(ch.id).count()).toBe(1);
+  });
+});
+
 describe("deleteProject", () => {
   it("removes the project and everything that belongs to it", async () => {
     const p = await createProject({ title: "x" });

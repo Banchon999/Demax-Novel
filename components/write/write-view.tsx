@@ -286,6 +286,20 @@ function ChapterOptions({
           เปิดแท็บพล็อต
         </Link>
       </section>
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href={`/ai?p=${projectId}&chapter=${chapter.id}&mode=review`}
+          className="flex min-h-11 items-center justify-center rounded-xl bg-accent/20 px-3 text-sm font-semibold text-accent-soft ring-1 ring-accent/40"
+        >
+          🔍 ให้ AI ตรวจตอนนี้
+        </Link>
+        <Link
+          href={`/ai?p=${projectId}&chapter=${chapter.id}&mode=continue`}
+          className="flex min-h-11 items-center justify-center rounded-xl bg-accent/20 px-3 text-sm font-semibold text-accent-soft ring-1 ring-accent/40"
+        >
+          💡 ให้ AI ช่วยคิดต่อ
+        </Link>
+      </div>
       <form
         className="space-y-2"
         onSubmit={async (e) => {

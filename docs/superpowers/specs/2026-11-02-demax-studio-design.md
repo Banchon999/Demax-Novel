@@ -27,11 +27,11 @@ Max อยากได้ **เครื่องมือแต่งนิย�
 ## Roadmap
 | เฟส | ระบบ |
 |---|---|
-| **0** | ฐานระบบ: data model, IndexedDB, studio shell มือถือ, PWA offline, backup/restore |
-| **1** | หน้าเขียน: web novel (prose) + chat novel, autosave, snapshot, เป้าหมาย/streak, Quick Capture |
-| 2 | Codex + tree line (+ auto-mention ในหน้าเขียน, progressions, กราฟ, timeline) |
-| 3 | แท็บองก์/Arc + foreshadow tracker + tension graph |
-| 4 | AI assistant (OpenRouter) |
+| **0** ✓ | ฐานระบบ: data model, IndexedDB, studio shell มือถือ, PWA offline, backup/restore |
+| **1** ✓ | หน้าเขียน: web novel (prose) + chat novel, autosave, snapshot, เป้าหมาย/streak, Quick Capture |
+| 2 ✓ | Codex + tree line (+ auto-mention ในหน้าเขียน, progressions, กราฟ, timeline) |
+| 3 ✓ | แท็บองก์/Arc + foreshadow tracker + tension graph |
+| 4 ✓ | AI assistant (OpenRouter, **Gemini 3.1 Flash Lite เท่านั้น** ตามที่ Max กำหนด) |
 | 5 | Export ทุกรูปแบบ |
 | 6 | World map generator |
 | 7 | World simulation + what-if |
@@ -104,3 +104,9 @@ Max อยากได้ **เครื่องมือแต่งนิย�
   5. เปิดแบบ offline (`context.setOffline(true)`) หลังโหลดครั้งแรกแล้วยังใช้งานได้
   - ถ่าย screenshot มือถือส่งให้ Max ดู
 - Commit แล้ว push ไปที่ `claude/novel-writing-web-app-095y5j` → เปิด draft PR → subscribe PR activity
+
+## บันทึกการทำเฟส 2–4
+- Max สั่ง: “เทสเองได้เลย ส่วน AI กำหนดให้ใช้แค่ Gemini 3.1 Flash Lite เท่านั้น”
+- โมเดลล็อกที่เซิร์ฟเวอร์ (`lib/ai/config.ts` → `google/gemini-3.1-flash-lite`) มี unit test ยืนยันว่า client ส่งโมเดลอื่นมาก็ไม่มีผล
+- Context ที่ส่งให้ AI: เรื่องย่อ, สารบัญ, ภาค/จังหวะ, ปมที่ยังไม่เฉลย, Codex ที่เกี่ยวข้องกับตอน (สถานะ ณ ตอนนั้น + ความสัมพันธ์), ไทม์ไลน์, ท้ายตอนก่อน, เนื้อหาตอน · จำกัด ~60k ตัวอักษร
+- ข้อควรรู้ของ Next 16: หน้าที่ออกไปแล้วถูกซ่อนด้วย `<Activity>` ไม่ได้ unmount → Sheet ต้องปิด `<dialog>` ใน cleanup ไม่งั้นหน้าใหม่จะกดอะไรไม่ได้

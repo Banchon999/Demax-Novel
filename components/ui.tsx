@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -109,11 +110,17 @@ export function Sheet({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
+    // Next keeps visited pages alive but hidden (<Activity>), which runs
+    // effect cleanups. A modal left open on a hidden page would make the
+    // visible page inert, so release it here; it reopens when shown again.
+    return () => {
+      if (dialog.open) dialog.close();
+    };
   }, [open]);
 
   return (

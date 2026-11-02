@@ -249,6 +249,44 @@ async function waitSaved(page) {
   check(true, "writing screen shows this chapter's plan");
   await page.getByRole("button", { name: "ปิด" }).click();
 
+  // 4d. AI assistant: real streaming call, then codex extraction.
+  const aiRequests = [];
+  page.on("request", (r) => r.url().endsWith("/api/ai") && aiRequests.push(r.postDataJSON()));
+  await page.goto(proseUrl);
+  await page.getByRole("button", { name: "ตัวเลือก" }).click();
+  await page.getByRole("link", { name: /ให้ AI ตรวจตอนนี้/ }).click();
+  await page.waitForURL(/\/ai\?p=/);
+  await page.getByLabel("ข้อความถึงผู้ช่วย AI").fill("ช่วยตรวจตอนนี้สั้นๆ ไม่เกิน 5 บรรทัด และบอกบทบาทของไลลา ณ ตอนนี้");
+  await page.getByRole("button", { name: "ส่ง" }).click();
+  const reply = page.locator("article").filter({ has: page.getByRole("button", { name: "คัดลอก" }) }).first();
+  await reply.waitFor({ timeout: 60000 });
+  const replyText = await reply.textContent();
+  check(replyText.length > 40, `AI replied (${replyText.length} chars)`);
+  check(/ตัวเอก/.test(replyText), "AI used codex state as of the chapter (ไลลา = ตัวเอก)");
+  const sent = aiRequests[0];
+  check(sent.system.includes("ไลลา") && sent.system.includes("ดาบหักในห้องใต้ดิน"), "AI context includes codex and open threads");
+  await shot(page, "ai-review");
+
+  await page.getByRole("button", { name: "แชทใหม่" }).click();
+  await page.getByRole("button", { name: /สร้างตัวละคร/ }).click();
+  await page.getByLabel("ข้อความถึงผู้ช่วย AI").fill("ช่วยสร้างตัวละครใหม่: นักดาบหญิงผู้เฝ้าหอคอยเงา ชื่อ ธารา สั้นๆ");
+  await page.getByRole("button", { name: "ส่ง" }).click();
+  const charReply = page.locator("article").filter({ has: page.getByRole("button", { name: "บันทึกเข้า Codex" }) }).first();
+  await charReply.waitFor({ timeout: 60000 });
+  await charReply.getByRole("button", { name: "บันทึกเข้า Codex" }).click();
+  await page.getByRole("button", { name: "ให้ AI จัดเป็นข้อมูล Codex" }).click();
+  await page.getByRole("dialog", { name: "บันทึกเข้า Codex" }).getByText(/ธารา/).first().waitFor({ timeout: 60000 });
+  await shot(page, "ai-codex-preview");
+  await page.getByRole("dialog", { name: "บันทึกเข้า Codex" }).getByRole("button", { name: "บันทึก", exact: true }).click();
+  await page.getByText(/เข้า Codex แล้ว/).waitFor();
+  await page.goto(projectUrl.replace("/project?id=", "/codex?p="));
+  await page.getByRole("link", { name: /ธารา/ }).waitFor();
+  check(true, "AI-created character saved into the codex");
+  await page.goto(projectUrl.replace("/project?id=", "/ai?p="));
+  await page.getByRole("button", { name: "ประวัติการคุย" }).click();
+  check((await page.getByRole("dialog", { name: "ประวัติการคุย" }).locator("li").count()) === 2, "AI conversations are kept in history");
+  await page.getByRole("button", { name: "ปิด" }).click();
+
   // 5. Backup download, restore into a fresh "device".
   await page.goto(BASE + "/settings");
   const [download] = await Promise.all([

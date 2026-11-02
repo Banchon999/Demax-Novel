@@ -1,3 +1,4 @@
+import { AI_KEY_SETTING } from "@/lib/ai/config";
 import { db } from "./index";
 import type {
   AiThread,
@@ -73,6 +74,9 @@ export class BackupError extends Error {}
 
 const allTables = () => TABLES.map((name) => db[name]);
 
+/** Settings that must never leave the device in a backup file. */
+const PRIVATE_SETTINGS = new Set([AI_KEY_SETTING]);
+
 export async function exportAll(): Promise<Backup> {
   const data = {} as BackupData;
   await db.transaction("r", allTables(), async () => {
@@ -80,6 +84,7 @@ export async function exportAll(): Promise<Backup> {
       (data as Record<TableName, unknown[]>)[name] = await db[name].toArray();
     }
   });
+  data.settings = data.settings.filter((s) => !PRIVATE_SETTINGS.has(s.key));
   return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: Date.now(), data };
 }
 

@@ -27,6 +27,16 @@ describe("backup", () => {
     expect((await db.projects.toArray()).map((p) => p.title).sort()).toEqual(["A", "B"]);
   });
 
+  it("never exports the private AI key", async () => {
+    await db.settings.bulkPut([
+      { key: "openrouterKey", value: "sk-secret" },
+      { key: "editorFontSize", value: "l" },
+    ]);
+    const json = JSON.stringify(await exportAll());
+    expect(json).not.toContain("sk-secret");
+    expect(json).toContain("editorFontSize");
+  });
+
   it("rejects files that are not DEMAX backups", () => {
     expect(() => parseBackup({ hello: 1 })).toThrow(BackupError);
     expect(() => parseBackup({ app: "demax-studio", version: 99, data: {} })).toThrow(BackupError);

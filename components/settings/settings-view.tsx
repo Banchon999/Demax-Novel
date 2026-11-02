@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DownloadIcon, UploadIcon } from "@/components/icons";
 import { TopBar } from "@/components/top-bar";
-import { Button, ConfirmButton, Segmented, Sheet } from "@/components/ui";
+import { Button, ConfirmButton, Segmented, Sheet, inputClass } from "@/components/ui";
 import { dayKey, timeAgo } from "@/lib/dates";
 import {
   BackupError,
@@ -17,6 +17,7 @@ import {
 import { setSetting } from "@/lib/db/repo";
 import { downloadJson } from "@/lib/download";
 import { useSetting, type FontSizeKey } from "@/lib/hooks/use-setting";
+import { AI_KEY_SETTING, AI_MODEL_LABEL } from "@/lib/ai/config";
 
 type StorageInfo = { persisted: boolean; usage: number; quota: number } | null;
 
@@ -25,6 +26,8 @@ const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 export function SettingsView() {
   const [lastBackup] = useSetting<number>(LAST_BACKUP_KEY, 0);
   const [fontKey, setFontKey] = useSetting<FontSizeKey>("editorFontSize", "m");
+  const [aiKey, setAiKey] = useSetting<string>(AI_KEY_SETTING, "");
+  const [showKey, setShowKey] = useState(false);
   const [storage, setStorage] = useState<StorageInfo>(null);
   const [pending, setPending] = useState<Backup | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -146,6 +149,35 @@ export function SettingsView() {
           </div>
         </section>
 
+        <section aria-labelledby="ai-heading" className="space-y-3 rounded-2xl bg-surface p-4 ring-1 ring-white/5">
+          <h2 id="ai-heading" className="font-bold">
+            ผู้ช่วย AI
+          </h2>
+          <p className="text-sm">
+            โมเดล: <span className="font-semibold">{AI_MODEL_LABEL}</span> <span className="text-xs text-muted">(กำหนดตายตัว)</span>
+          </p>
+          <label className="block space-y-1.5">
+            <span className="text-sm text-fg/90">OpenRouter API key ส่วนตัว (ไม่บังคับ)</span>
+            <span className="flex gap-2">
+              <input
+                type={showKey ? "text" : "password"}
+                className={inputClass}
+                value={aiKey}
+                onChange={(e) => setAiKey(e.target.value.trim())}
+                placeholder="sk-or-…"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <Button className="shrink-0" onClick={() => setShowKey((v) => !v)}>
+                {showKey ? "ซ่อน" : "แสดง"}
+              </Button>
+            </span>
+            <span className="block text-xs text-muted">
+              ใช้เมื่อเซิร์ฟเวอร์ไม่ได้ตั้งค่า key ไว้ เก็บไว้ในเครื่องนี้เท่านั้นและไม่ถูกใส่ในไฟล์สำรอง
+            </span>
+          </label>
+        </section>
+
         {storage && (
           <section aria-labelledby="storage-heading" className="space-y-1 rounded-2xl bg-surface p-4 text-sm ring-1 ring-white/5">
             <h2 id="storage-heading" className="mb-2 font-bold">
@@ -162,7 +194,7 @@ export function SettingsView() {
           </section>
         )}
 
-        <p className="pb-4 text-center text-xs text-muted">DEMAX Studio · เฟส 1</p>
+        <p className="pb-4 text-center text-xs text-muted">DEMAX Studio</p>
       </main>
 
       <Sheet open={pending !== null} onClose={() => setPending(null)} title="กู้คืนข้อมูล">

@@ -305,3 +305,32 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 export async function setSetting(key: string, value: unknown) {
   await db.settings.put({ key, value });
 }
+
+/**
+ * Adds text to the end of a chapter (one paragraph or narration line per
+ * line). A snapshot is taken first so the addition is one tap to undo.
+ */
+export async function appendToChapter(chapterId: string, text: string, label = "ก่อนเพิ่มข้อความจาก AI") {
+  const chapter = await db.chapters.get(chapterId);
+  if (!chapter) throw new Error("ไม่พบตอนนี้");
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+  await createSnapshot(chapterId, { label });
+  let content: ChapterContent;
+  if (chapter.content.kind === "prose") {
+    const existing = (chapter.content.doc.content ?? []).filter(
+      (n, i, all) => !(i === all.length - 1 && n.type === "paragraph" && !n.content?.length),
+    );
+    content = {
+      kind: "prose",
+      doc: { ...chapter.content.doc, content: [...existing, ...lines.map((l) => ({ type: "paragraph", content: [{ type: "text", text: l }] }))] },
+    };
+  } else {
+    const chat = chapter.content.chat;
+    content = {
+      kind: "chat",
+      chat: { ...chat, messages: [...chat.messages, ...lines.map((l) => ({ id: newId(), castId: null, kind: "narration" as const, text: l }))] },
+    };
+  }
+  await saveChapterContent(chapterId, content);
+}
